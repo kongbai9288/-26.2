@@ -1,34 +1,24 @@
-name: Auto Unzip Source
-
+name: Extract Source
 on:
   workflow_dispatch:
   push:
-    paths: ['*.zip']
-
+    paths: ['LowYSwampHut-fixed.zip']
 permissions:
   contents: write
-  workflows: write
-
 jobs:
-  unzip:
+  extract:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Extract ZIP
+      - name: Unzip and Clean
         run: |
-          unzip -o *.zip -d .
-          rm -f *.zip
-          ls -la
-
-      - name: Commit and push
+          unzip -o LowYSwampHut-fixed.zip -d .
+          rm LowYSwampHut-fixed.zip
+      - name: Commit Source Only
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if ! git diff --cached --quiet; then
-            git commit -m "auto: extract source from ZIP"
-            git push
-          else
-            echo "No changes to commit"
-          fi
+          # 关键：只添加源码，不添加 .github/ 下的任何文件（避免冲突）
+          git add src/ build.gradle settings.gradle gradle/ README-FIXED.md
+          git diff --cached --quiet || git commit -m "chore: update source code"
+          git push
