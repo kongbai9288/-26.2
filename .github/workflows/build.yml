@@ -1,58 +1,20 @@
 name: Auto Unzip Source
-
 on:
   workflow_dispatch:
   push:
-    paths:
-      - 'LowYSwampHut-fixed.zip'
-
-permissions:
-  contents: write
-
+    paths: ['*.zip']
+permissions: { contents: write }
 jobs:
   unzip:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Debug zip structure
-        run: |
-          echo "=== ZIP 内部结构 ==="
-          unzip -l LowYSwampHut-fixed.zip
-          echo "=== 当前仓库根目录 ==="
-          ls -la
-
-      - name: Extract and move to root
-        run: |
-          # 解压到同名目录
-          unzip -o LowYSwampHut-fixed.zip -d LowYSwampHut-fixed
-          
-          echo "=== 解压后目录 ==="
-          ls -la LowYSwampHut-fixed/
-          
-          # 如果内部还有一层同名目录，继续下钻
-          if [ -d "LowYSwampHut-fixed/LowYSwampHut-fixed" ]; then
-            echo "检测到嵌套目录，下钻一层"
-            cp -rf LowYSwampHut-fixed/LowYSwampHut-fixed/. .
-          else
-            cp -rf LowYSwampHut-fixed/. .
-          fi
-          
-          # 删除解压目录和 ZIP
-          rm -rf LowYSwampHut-fixed
-          rm -f LowYSwampHut-fixed.zip
-          
-          echo "=== 复制后仓库根目录 ==="
-          ls -la
-          echo "=== 确认关键文件 ==="
-          test -f build.gradle && echo "✅ build.gradle 存在" || echo "❌ build.gradle 缺失"
-          test -d src/main/java/project && echo "✅ src/main/java/project 存在" || echo "❌ src 目录缺失"
-
-      - name: Commit extracted files
-        run: |
+      - uses: actions/checkout@v4
+      - run: |
+          unzip -o *.zip -d .  # 直接解压到当前目录（ZIP根=仓库根）
+          rm -f *.zip           # 删掉ZIP避免下次触发
+          ls -la                # 打印结果确认
+      - run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "auto: extract source from ZIP" || echo "nothing to commit"
-          git push
+          git add -A
+          git diff --cached --quiet || git commit -m "auto: extract source" && git push
