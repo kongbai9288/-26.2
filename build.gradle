@@ -1,0 +1,58 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+group = 'project'
+version = '1.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+    maven { url = "https://maven.seedfinding.com" }
+    maven { url = "https://maven.latticg.com" }
+    maven { url = "https://jitpack.io" }
+    maven { url = "https://repo.jellejurre.dev" }
+}
+
+dependencies {
+    // SeedFinding 核心（M33Galaxy/CaveFinder 验证版）
+    implementation('com.seedfinding:mc_core:1.210.0')
+    implementation('com.seedfinding:mc_feature:1.171.9')
+    implementation('com.github.jellejurre:seed-checker:1.2.0-1.18.1') {
+        transitive = false
+    }
+    // Noise Sampler（SearchCoords.java 编译必需）
+    implementation('com.github.KalleStruik:noise-sampler:1.20.0')
+    // Lattice
+    implementation('com.seedfinding:latticg:1.06@jar')
+
+    implementation 'org.apache.logging.log4j:log4j-api:2.20.0'
+    implementation 'org.apache.logging.log4j:log4j-core:2.20.0'
+}
+
+application {
+    mainClass = 'project.Launcher'
+}
+
+shadowJar {
+    archiveBaseName.set('LowYSwampHut')
+    archiveClassifier.set('')
+    archiveVersion.set('')
+    manifest {
+        attributes 'Main-Class': 'project.CmdLineRunner'
+    }
+    mergeServiceFiles()
+    transform(com.github.jengelman.gradle.plugins.shadow.transformers.Log4j2PluginsCacheFileTransformer)
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+    includeEmptyDirs = false
+}
+
+tasks.named('build').configure {
+    dependsOn shadowJar
+}
