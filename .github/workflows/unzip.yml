@@ -7,7 +7,7 @@ on:
 
 permissions:
   contents: write
-  workflows: write   # ✅ 关键：允许修改 workflow 文件
+  workflows: write
 
 jobs:
   unzip:
