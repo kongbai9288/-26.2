@@ -1,0 +1,80 @@
+name: Build LowYSwampHut
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # ===== 关键：解压修复后的源码压缩包 =====
+      - name: Verify zip exists
+        run: |
+          echo "Checking for LowYSwampHut-fixed.zip..."
+          ls -la LowYSwampHut-fixed.zip 2>/dev/null || {
+            echo "=========================================="
+            echo "ERROR: LowYSwampHut-fixed.zip NOT FOUND"
+            echo "Please upload LowYSwampHut-fixed.zip to repo root"
+            echo "=========================================="
+            exit 1
+          }
+          echo "OK: zip file found"
+
+      - name: Extract fixed source zip
+        run: |
+          echo "Extracting LowYSwampHut-fixed.zip..."
+          mkdir -p $RUNNER_TEMP/extracted
+          unzip -o LowYSwampHut-fixed.zip -d $RUNNER_TEMP/extracted
+          echo "--- Extracted contents ---"
+          ls -la $RUNNER_TEMP/extracted/
+          ls -la $RUNNER_TEMP/extracted/LowYSwampHut-fixed/ 2>/dev/null || true
+
+      - name: Copy extracted files to workspace root
+        run: |
+          # 把解压出来的内容覆盖到工作目录根
+          cp -rfv $RUNNER_TEMP/extracted/LowYSwampHut-fixed/. .
+          echo "--- Final workspace layout ---"
+          ls -la
+          echo "--- build.gradle (first 8 lines) ---"
+          head -8 build.gradle
+          echo "--- gradle wrapper dir ---"
+          ls -la gradle/wrapper/ 2>/dev/null || echo "(no wrapper dir - will use setup-gradle)"
+
+      # ===== 用 GitHub 官方 Action 处理 Gradle（不依赖 gradlew） =====
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.5
+          cache-disabled: true  # 避免缓存导致的不一致
+
+      - name: Build with ShadowJar
+        run: gradle shadowJar --no-daemon
+
+      - name: Verify jar was produced
+        run: |
+          ls -lh build/libs/
+          if [ ! -f build/libs/LowYSwampHut.jar ]; then
+            echo "ERROR: LowYSwampHut.jar was NOT produced!"
+            echo "Check the build logs above for compilation errors."
+            exit 1
+          fi
+          echo "OK: LowYSwampHut.jar built successfully"
+          echo "--- Manifest check ---"
+          unzip -p build/libs/LowYSwampHut.jar META-INF/MANIFEST.MF | grep -i "Main-Class"
+
+      - name: Upload built JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: LowYSwampHut
+          path: build/libs/LowYSwampHut.jar
