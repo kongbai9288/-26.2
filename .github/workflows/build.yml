@@ -16,26 +16,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Detect and extract zip
+      - name: Debug zip structure
         run: |
           echo "=== ZIP 内部结构 ==="
-          unzip -l LowYSwampHut-fixed.zip | head -20
-          
-          mkdir -p $RUNNER_TEMP/extracted
-          unzip -o LowYSwampHut-fixed.zip -d $RUNNER_TEMP/extracted
-          
-          echo "=== 解压后的目录结构 ==="
-          ls -la $RUNNER_TEMP/extracted
-          
-          # 自动探测 build.gradle 所在的真实目录
-          SRC_DIR=$(find $RUNNER_TEMP/extracted -maxdepth 3 -name "build.gradle" | head -1 | xargs dirname)
-          echo "找到源码目录: $SRC_DIR"
-          
-          # 把源码复制到仓库根
-          cp -rf "$SRC_DIR/." .
-          
-          echo "=== 仓库根目录现状 ==="
+          unzip -l LowYSwampHut-fixed.zip
+          echo "=== 当前仓库根目录 ==="
           ls -la
+
+      - name: Extract and move to root
+        run: |
+          # 解压到同名目录
+          unzip -o LowYSwampHut-fixed.zip -d LowYSwampHut-fixed
+          
+          echo "=== 解压后目录 ==="
+          ls -la LowYSwampHut-fixed/
+          
+          # 如果内部还有一层同名目录，继续下钻
+          if [ -d "LowYSwampHut-fixed/LowYSwampHut-fixed" ]; then
+            echo "检测到嵌套目录，下钻一层"
+            cp -rf LowYSwampHut-fixed/LowYSwampHut-fixed/. .
+          else
+            cp -rf LowYSwampHut-fixed/. .
+          fi
+          
+          # 删除解压目录和 ZIP
+          rm -rf LowYSwampHut-fixed
+          rm -f LowYSwampHut-fixed.zip
+          
+          echo "=== 复制后仓库根目录 ==="
+          ls -la
+          echo "=== 确认关键文件 ==="
+          test -f build.gradle && echo "✅ build.gradle 存在" || echo "❌ build.gradle 缺失"
+          test -d src/main/java/project && echo "✅ src/main/java/project 存在" || echo "❌ src 目录缺失"
 
       - name: Commit extracted files
         run: |
